@@ -1,0 +1,6 @@
+output/models
+detectron_env
+alpha_dataset_02
+models
+*.jpg
+models/model_final.pth
