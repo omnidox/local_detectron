@@ -230,73 +230,6 @@ def classify_objects(objects_list):
         print("\n")
 
 
-    #     # Convert the numpy array to bytes
-    #     segmentation_bytes = segmentation.cpu().numpy().tobytes()
-
-    #     # Encode the bytes to a base64 string
-    #     segmentation_b64 = base64.b64encode(segmentation_bytes).decode('utf-8')
-
-    #     payload = {
-    #         "class_name": class_name,
-    #         "object_id": object_id,
-    #         "box": box,
-    #         "segmentation": segmentation_b64,
-    #         "shape": segmentation.shape
-    #     }
-
-    #     json_data = json.dumps(payload)
-    #     compressed_data = gzip.compress(bytes(json_data, 'utf-8'))
-    #     headers = {'Content-Encoding': 'gzip'}
-
-    #     response = requests.post(url, data=compressed_data, headers=headers)
-    #     print("Response: ", response.json())
-
-    # print("---------------------------------------------------")
-
-
-# import requests
-# import json
-
-# # define your Flask-ngrok url here
-# url = "http://montclair-object-detector.ngrok.app/"
-
-# def classify_objects(objects_list):
-#     for object_info in objects_list:
-#         class_name = object_info["class_name"]
-#         object_id = object_info["object_id"]
-#         segmentation = object_info["segmentation"]
-#         box = object_info["box"]
-
-#         scores = {
-#             category: score_dict[category].get(class_name, 0) * 100
-#             for category in score_dict
-#         }
-
-#         if all(score == 0 for score in scores.values()):
-#             scores["Misc"] = 100
-
-#         print(f"Class Name: {class_name}")
-#         print(f"Object ID: {object_id}")
-#         print(f"Box: {box}")
-#         print(f"Segmentation: {segmentation}")
-#         for category, score in scores.items():
-#             if score != 0:
-#                 print(f"{category}: {score}%")
-#         print("\n")
-
-#         # Sending POST request to the Flask server
-#         payload = {
-#             "class_name": class_name,
-#             "object_id": object_id,
-#             "box": box,
-#             "segmentation": segmentation.cpu().numpy().tolist()  # Convert to list here
-#         }
-
-#         response = requests.post(url, json=payload)
-#         print("Response: ", response.json())
-
-#     print("---------------------------------------------------")
-
 
 def generate_objects_list(outputs, cfg):
     instances = outputs["instances"]
@@ -340,31 +273,6 @@ score_dict = {
     }
 }
 
-# def classify_objects(objects_list):
-#     for object_info in objects_list:
-#         class_name = object_info["class_name"]
-#         object_id = object_info["object_id"]
-#         segmentation = object_info["segmentation"]
-#         box = object_info["box"]
-
-#         scores = {
-#             category: score_dict[category].get(class_name, 0) * 100
-#             for category in score_dict
-#         }
-
-#         if all(score == 0 for score in scores.values()):
-#             scores["Misc"] = 100
-
-#         print(f"Class Name: {class_name}")
-#         print(f"Object ID: {object_id}")
-#         print(f"Box: {box}")
-#         print(f"Segmentation: {segmentation}")
-#         for category, score in scores.items():
-#             if score != 0:
-#                 print(f"{category}: {score}%")
-#         print("\n")
-
-#     print("---------------------------------------------------")
 
 import cv2
 
