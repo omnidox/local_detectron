@@ -1,1 +1,5 @@
 source detectron_env/bin/activate
+
+On windows: 
+
+detectron_env\Scripts\activate 
