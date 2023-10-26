@@ -33,13 +33,18 @@ from detectron2.data.datasets.lvis import get_lvis_instances_meta, register_lvis
 
 # Continuation Training but with a scheduler for optimization
 
+# register_lvis_instances("lvis_v1_val", {}, ".output/lvis_v1_val.json", ".output/images")
+
+lvis_metadata = MetadataCatalog.get("lvis_v1_val")
+
 
 from detectron2.engine import DefaultTrainer
 
 cfg = get_cfg()
 cfg.MODEL.DEVICE = 'cuda'
-cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-cfg.DATASETS.TRAIN = ("fiftyone_train",)
+# cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+cfg.merge_from_file("output/YAML/Base-C2-basep2-mask_L_R5021k_640b64_4x.yaml")
+cfg.DATASETS.TRAIN = ("lvis_v1_val",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
 
@@ -47,7 +52,7 @@ cfg.DATALOADER.NUM_WORKERS = 2
 
 
 # cfg.MODEL.WEIGHTS = "/content/drive/MyDrive/Gamma_office_Dataset/Weights_1/model_final.pth"
-cfg.MODEL.WEIGHTS = "models/model_final.pth"
+cfg.MODEL.WEIGHTS = "models/baseline_R50.pth"
 
 
 cfg.SOLVER.IMS_PER_BATCH = 2
@@ -58,10 +63,14 @@ cfg.SOLVER.GAMMA = 0.1
 # cfg.SOLVER.WARMUP_ITERS = 2000
 cfg.SOLVER.LR_SCHEDULER_NAME = "WarmupCosineLR"
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(lvis_metadata.thing_classes)
 # cfg.OUTPUT_DIR = "/content/drive/MyDrive/Gamma_office_Dataset/Weights_1"
 
 cfg.SOLVER.CHECKPOINT_PERIOD = 2400
+
+# Print the number of classes
+print(f"Number of classes: {len(lvis_metadata.thing_classes)}")
+
 
 # os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 # trainer = DefaultTrainer(cfg)
@@ -71,7 +80,7 @@ cfg.SOLVER.CHECKPOINT_PERIOD = 2400
 import torch
 
 # Load the model checkpoint
-checkpoint = torch.load(os.path.join(cfg.OUTPUT_DIR, "models/model_final.pth"))
+checkpoint = torch.load(os.path.join(cfg.OUTPUT_DIR, "models/baseline_R50.pth"))
 
 
 # Extract the number of iterations
@@ -86,7 +95,7 @@ print(f"The model was trained for {iterations} iterations.")
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
 
 
-cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final.pth")  # path to the model we just trained
+cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/baseline_R50.pth")  # path to the model we just trained
 predictor = DefaultPredictor(cfg)
 
 
@@ -94,85 +103,51 @@ predictor = DefaultPredictor(cfg)
 
 
 # export_dir = "/content/drive/MyDrive/Alpha_dataset_02"
-export_dir = "alpha_dataset_02/Alpha_dataset_02"
+# export_dir = "alpha_dataset_02/Alpha_dataset_02"
 
 # Import the dataset
-imported_dataset = fo.Dataset.from_dir(
-    dataset_dir=export_dir,
-    dataset_type=fo.types.FiftyOneDataset,
-    name="imported_dataset_name",
-    overwrite=True  # Overwrite existing dataset
-)
+# imported_dataset = fo.Dataset.from_dir(
+#     dataset_dir=export_dir,
+#     dataset_type=fo.types.FiftyOneDataset,
+#     name="imported_dataset_name",
+#     overwrite=True  # Overwrite existing dataset
+# )
 
 
 # Get the list of classes for the "ground_truth" field
-GT_Classes = imported_dataset.distinct("ground_truth.detections.label")
+# GT_Classes = imported_dataset.distinct("ground_truth.detections.label")
 
 # Print the classes
-print(GT_Classes)
+# print(GT_Classes)
 
-classes = ['Apple', 'Orange', 'Peach', 'Strawberry', 'Grape', 'Pear', 'Lemon', 'Banana',
-'Bottle', 'Beer', 'Juice', 'Wine',
-'Carrot', 'Bell pepper', 'Cucumber', 'Broccoli', 'Garden Asparagus', 'Zucchini', 'Radish', 'Artichoke', 'Mushroom', 'Potato',
-'Pretzel', 'Popcorn', 'Muffin', 'Cheese', 'Cake', 'Cookie', 'Pastry', 'Doughnut',
-'Pen', 'Adhesive tape', 'Pencil case', 'Stapler', 'Scissors', 'Ruler',
-'Ball', 'Balloon', 'Dice', 'Flying disc', 'Teddy bear',
-'Platter', 'Bowl', 'Knife', 'Spoon', 'Saucer', 'Chopsticks', 'Drinking straw', 'Mug',
-'Glove', 'Belt', 'Sock', 'Tie', 'Watch', 'Computer mouse', 'Coin', 'Calculator', 'Box', 'Boot', 'Towel', 'Shorts', 'Swimwear',
-'Shirt', 'Clock', 'Hat', 'Scarf', 'Roller skates', 'Skirt', 'Mobile phone',
-'Plastic bag', 'High heels', 'Handbag', 'Clothing', 'Oyster', 'Tablet computer', 'Book', 'Flower', 'Candle', 'Camera', 'Remote control']
+# classes = ['Apple', 'Orange', 'Peach', 'Strawberry', 'Grape', 'Pear', 'Lemon', 'Banana',
+# 'Bottle', 'Beer', 'Juice', 'Wine',
+# 'Carrot', 'Bell pepper', 'Cucumber', 'Broccoli', 'Garden Asparagus', 'Zucchini', 'Radish', 'Artichoke', 'Mushroom', 'Potato',
+# 'Pretzel', 'Popcorn', 'Muffin', 'Cheese', 'Cake', 'Cookie', 'Pastry', 'Doughnut',
+# 'Pen', 'Adhesive tape', 'Pencil case', 'Stapler', 'Scissors', 'Ruler',
+# 'Ball', 'Balloon', 'Dice', 'Flying disc', 'Teddy bear',
+# 'Platter', 'Bowl', 'Knife', 'Spoon', 'Saucer', 'Chopsticks', 'Drinking straw', 'Mug',
+# 'Glove', 'Belt', 'Sock', 'Tie', 'Watch', 'Computer mouse', 'Coin', 'Calculator', 'Box', 'Boot', 'Towel', 'Shorts', 'Swimwear',
+# 'Shirt', 'Clock', 'Hat', 'Scarf', 'Roller skates', 'Skirt', 'Mobile phone',
+# 'Plastic bag', 'High heels', 'Handbag', 'Clothing', 'Oyster', 'Tablet computer', 'Book', 'Flower', 'Candle', 'Camera', 'Remote control']
 
 
-num_classes = len(classes)
-print("Number of classes: ", num_classes)
+# num_classes = len(classes)
+# print("Number of classes: ", num_classes)
 
 # Empty Polygon Error correction for fiftyone.
 from detectron2.structures import BoxMode
 
-def get_fiftyone_dicts(samples, classes):
-    samples.compute_metadata()
-
-    dataset_dicts = []
-    for sample in samples.select_fields(["id", "filepath", "metadata", "ground_truth"]):
-        height = sample.metadata["height"]
-        width = sample.metadata["width"]
-        record = {}
-        record["file_name"] = sample.filepath
-        record["image_id"] = sample.id
-        record["height"] = height
-        record["width"] = width
-
-        objs = []
-        for det in sample.ground_truth.detections:
-            if det.label in classes:
-                tlx, tly, w, h = det.bounding_box
-                bbox = [int(tlx*width), int(tly*height), int(w*width), int(h*height)]
-                fo_poly = det.to_polyline()
-                if fo_poly.points:
-                    poly = [(x*width, y*height) for x, y in fo_poly.points[0]]
-                    poly = [p for x in poly for p in x]
-                    if len(poly) >= 6:  # Check if the coordinates are sufficient to form a polygon
-                        obj = {
-                            "bbox": bbox,
-                            "bbox_mode": BoxMode.XYWH_ABS,
-                            "segmentation": [poly],
-                            "category_id": classes.index(det.label),
-                        }
-                        objs.append(obj)
-
-        record["annotations"] = objs
-        dataset_dicts.append(record)
-
-    return dataset_dicts
 
 
 # Sets up Catalog Data for default fiftyone structured files
 
 
-for d in ["train", "val"]:
-    MetadataCatalog.get("fiftyone_" + d).set(thing_classes=classes)
 
-metadata = MetadataCatalog.get("fiftyone_train")
+# metadata = MetadataCatalog.get("fiftyone_train")
+
+metadata = MetadataCatalog.get("lvis_v1_val")
+
 
 from IPython.display import display, Javascript, Image
 from base64 import b64decode, b64encode

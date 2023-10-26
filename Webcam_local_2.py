@@ -37,7 +37,7 @@ from detectron2.engine import DefaultTrainer
 
 cfg = get_cfg()
 cfg.MODEL.DEVICE = 'cpu'
-cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
+cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
 cfg.DATASETS.TRAIN = ("fiftyone_train",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
@@ -209,7 +209,7 @@ def classify_objects(objects_list):
     for object_info in objects_list:
         class_name = object_info["class_name"]
         object_id = object_info["object_id"]
-        segmentation = object_info["segmentation"]
+        # segmentation = object_info["segmentation"]
         box = object_info["box"]
 
         scores = {
@@ -223,7 +223,7 @@ def classify_objects(objects_list):
         print(f"Class Name: {class_name}")
         print(f"Object ID: {object_id}")
         print(f"Box: {box}")
-        print(f"Segmentation: {segmentation}")
+        # print(f"Segmentation: {segmentation}")
         for category, score in scores.items():
             if score != 0:
                 print(f"{category}: {score}%")
@@ -240,7 +240,7 @@ def generate_objects_list(outputs, cfg):
     return [{
         "class_name": class_catalog[instances.pred_classes[idx]],
         "object_id": idx,
-        "segmentation": instances.pred_masks[idx],
+        # "segmentation": instances.pred_masks[idx],
         "box": coordinates.tolist()
     } for idx, coordinates in enumerate(instances.pred_boxes.tensor)]
 
