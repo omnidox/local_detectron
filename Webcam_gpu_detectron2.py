@@ -40,7 +40,7 @@ from detectron2.engine import DefaultTrainer
 cfg = get_cfg()
 cfg.MODEL.DEVICE = 'cuda'
 cfg.merge_from_file(model_zoo.get_config_file("LVISv1-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"))
-cfg.DATASETS.TRAIN = ("lvis_v1_val",)
+cfg.DATASETS.TRAIN = ("fiftyone_train",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
 
@@ -205,28 +205,6 @@ import requests
 import json
 import gzip
 import base64
-
-from detectron2.engine import DefaultTrainer
-
-cfg = get_cfg()
-cfg.MODEL.DEVICE = 'cuda'
-
-# Adding the provided model configuration
-cfg.merge_from_file(model_zoo.get_config_file("LVISv1-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"))
-cfg.MODEL.WEIGHTS = "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
-cfg.MODEL.MASK_ON = True
-cfg.MODEL.RESNETS.DEPTH = 50
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1203
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
-cfg.INPUT.MIN_SIZE_TRAIN = (640, 672, 704, 736, 768, 800)
-cfg.DATASETS.TRAIN = ("lvis_v1_train",)
-cfg.DATASETS.TEST = ("lvis_v1_val",)
-cfg.TEST.DETECTIONS_PER_IMAGE = 300
-cfg.SOLVER.STEPS = (120000, 160000)
-cfg.SOLVER.MAX_ITER = 180000
-cfg.DATALOADER.SAMPLER_TRAIN = "RepeatFactorTrainingSampler"
-cfg.DATALOADER.REPEAT_THRESHOLD = 0.001
-
 
 
 def classify_objects(objects_list):
