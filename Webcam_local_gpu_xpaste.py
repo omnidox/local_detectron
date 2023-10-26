@@ -30,6 +30,11 @@ from detectron2.utils.visualizer import ColorMode, Visualizer
 from detectron2.modeling import build_model, build_roi_heads
 from detectron2.config import get_cfg
 from detectron2.data.datasets.lvis import get_lvis_instances_meta, register_lvis_instances
+from detectron2.config import CfgNode as CN
+from custom_timm import *
+from config import add_xpaste_config
+from center_config import add_centernet_config
+
 
 # Continuation Training but with a scheduler for optimization
 
@@ -41,12 +46,30 @@ lvis_metadata = MetadataCatalog.get("lvis_v1_val")
 from detectron2.engine import DefaultTrainer
 
 cfg = get_cfg()
+
+add_xpaste_config(cfg)  # Extend the default configuration
+
+add_centernet_config(cfg)
+# Add custom TIMM config
+# cfg.MODEL.TIMM = CN()
+# cfg.MODEL.TIMM.BASE_NAME = "resnet50"  # default value, you can change it
+# cfg.MODEL.TIMM.OUT_LEVELS = [2, 3, 4, 5]  # default value, you can change it
+# cfg.MODEL.TIMM.FREEZE_AT = 0  # default value, you can change it
+# cfg.MODEL.TIMM.NORM = "FrozenBN"  # default value, you can change it
+
+# cfg.MODEL.BACKBONE.NAME = "build_timm_backbone"
+
+
 cfg.MODEL.DEVICE = 'cuda'
 # cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
 cfg.merge_from_file("output/YAML/Base-C2-basep2-mask_L_R5021k_640b64_4x.yaml")
 cfg.DATASETS.TRAIN = ("lvis_v1_val",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
+
+
+
+
 
 # Point to the saved checkpoint from the previous training session
 
