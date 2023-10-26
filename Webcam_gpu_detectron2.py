@@ -35,20 +35,27 @@ from detectron2.data.datasets.lvis import get_lvis_instances_meta, register_lvis
 
 # register_lvis_instances("lvis_v1_val", {}, ".output/lvis_v1_val.json", ".output/images")
 
+lvis_metadata = MetadataCatalog.get("lvis_v0.5_val")
+
+print(f"Number of classes: {len(lvis_metadata.thing_classes)}")
+
+
+print(lvis_metadata.thing_classes)
+
+
 from detectron2.engine import DefaultTrainer
 
 cfg = get_cfg()
 cfg.MODEL.DEVICE = 'cuda'
-cfg.merge_from_file(model_zoo.get_config_file("LVISv1-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"))
-cfg.DATASETS.TRAIN = ("fiftyone_train",)
+cfg.merge_from_file(model_zoo.get_config_file("LVISv0.5-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"))
+cfg.DATASETS.TRAIN = ("lvis_v0.5_val",)
 cfg.DATASETS.TEST = ()
 cfg.DATALOADER.NUM_WORKERS = 2
 
 # Point to the saved checkpoint from the previous training session
 
-
 # cfg.MODEL.WEIGHTS = "/content/drive/MyDrive/Gamma_office_Dataset/Weights_1/model_final.pth"
-cfg.MODEL.WEIGHTS = "models/model_final.pth"
+cfg.MODEL.WEIGHTS = "models/model_final_571f7c.pkl"
 
 
 cfg.SOLVER.IMS_PER_BATCH = 2
@@ -59,7 +66,7 @@ cfg.SOLVER.GAMMA = 0.1
 # cfg.SOLVER.WARMUP_ITERS = 2000
 cfg.SOLVER.LR_SCHEDULER_NAME = "WarmupCosineLR"
 cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(lvis_metadata.thing_classes)
 # cfg.OUTPUT_DIR = "/content/drive/MyDrive/Gamma_office_Dataset/Weights_1"
 
 cfg.SOLVER.CHECKPOINT_PERIOD = 2400
@@ -72,13 +79,13 @@ cfg.SOLVER.CHECKPOINT_PERIOD = 2400
 import torch
 
 # Load the model checkpoint
-checkpoint = torch.load(os.path.join(cfg.OUTPUT_DIR, "models/model_final.pth"))
+# checkpoint = torch.load(os.path.join(cfg.OUTPUT_DIR, "models/model_final.pth"))
 
 
 # Extract the number of iterations
-iterations = checkpoint['iteration']
+# iterations = checkpoint['iteration']
 
-print(f"The model was trained for {iterations} iterations.")
+# print(f"The model was trained for {iterations} iterations.")
 
 
 # cfg = get_cfg()
@@ -87,7 +94,7 @@ print(f"The model was trained for {iterations} iterations.")
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
 
 
-cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final.pth")  # path to the model we just trained
+cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final_571f7c.pkl")  # path to the model we just trained
 predictor = DefaultPredictor(cfg)
 
 
@@ -170,10 +177,8 @@ def get_fiftyone_dicts(samples, classes):
 # Sets up Catalog Data for default fiftyone structured files
 
 
-for d in ["train", "val"]:
-    MetadataCatalog.get("fiftyone_" + d).set(thing_classes=classes)
 
-metadata = MetadataCatalog.get("fiftyone_train")
+metadata = MetadataCatalog.get("lvis_v0.5_val")
 
 from IPython.display import display, Javascript, Image
 from base64 import b64decode, b64encode
@@ -205,6 +210,29 @@ import requests
 import json
 import gzip
 import base64
+
+from detectron2.engine import DefaultTrainer
+
+cfg = get_cfg()
+cfg.MODEL.DEVICE = 'cuda'
+
+# Adding the provided model configuration
+# cfg.merge_from_file(model_zoo.get_config_file("LVISv1-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml"))
+# cfg.MODEL.WEIGHTS = "output/models/model_final_571f7c.pkl"
+
+cfg.MODEL.MASK_ON = True
+cfg.MODEL.RESNETS.DEPTH = 50
+cfg.MODEL.ROI_HEADS.NUM_CLASSES = 1203
+# cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.0001
+cfg.INPUT.MIN_SIZE_TRAIN = (640, 672, 704, 736, 768, 800)
+cfg.DATASETS.TRAIN = ("lvis_v0.5_train",)
+cfg.DATASETS.TEST = ("lvis_v0.5_val",)
+cfg.TEST.DETECTIONS_PER_IMAGE = 300
+cfg.SOLVER.STEPS = (120000, 160000)
+cfg.SOLVER.MAX_ITER = 180000
+cfg.DATALOADER.SAMPLER_TRAIN = "RepeatFactorTrainingSampler"
+# cfg.DATALOADER.REPEAT_THRESHOLD = 0.001
+
 
 
 def classify_objects(objects_list):
