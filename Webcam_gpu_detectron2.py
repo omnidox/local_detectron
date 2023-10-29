@@ -55,7 +55,7 @@ cfg.DATALOADER.NUM_WORKERS = 2
 # Point to the saved checkpoint from the previous training session
 
 # cfg.MODEL.WEIGHTS = "/content/drive/MyDrive/Gamma_office_Dataset/Weights_1/model_final.pth"
-cfg.MODEL.WEIGHTS = "models/model_final_571f7c.pkl"
+# cfg.MODEL.WEIGHTS = "models/model_final_571f7c.pkl"
 
 
 cfg.SOLVER.IMS_PER_BATCH = 2
@@ -94,7 +94,10 @@ import torch
 cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
 
 
-cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final_571f7c.pkl")  # path to the model we just trained
+cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("LVISv0.5-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml")
+
+
+# cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final_571f7c.pkl")  # path to the model we just trained
 predictor = DefaultPredictor(cfg)
 
 
