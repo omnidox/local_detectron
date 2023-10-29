@@ -15,10 +15,17 @@ import mss
 from detectron2.config import get_cfg
 from detectron2.data.detection_utils import read_image
 from detectron2.utils.logger import setup_logger
+import sys
+print(sys.path)
 
-sys.path.insert(0, 'third_party/CenterNet2/')
-from centernet.config import add_centernet_config
+
+
+# sys.path.insert(0, 'third_party/CenterNet2/')
+# from centernet.config import add_centernet_config
+from third_party.CenterNet2.centernet.config import add_centernet_config
+
 from detic.config import add_detic_config
+
 
 from detic.predictor import VisualizationDemo
 

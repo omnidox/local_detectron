@@ -272,7 +272,7 @@ def generate_objects_list(outputs, cfg):
 import cv2
 
 # Initialize the webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(2)
 
 while True:
     # Capture frame-by-frame
