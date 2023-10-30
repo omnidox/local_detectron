@@ -19,6 +19,7 @@ from detectron2.utils.logger import setup_logger
 sys.path.insert(0, 'third_party/CenterNet2/')
 from centernet.config import add_centernet_config
 from detic.config import add_detic_config
+from detectron2.data import MetadataCatalog
 
 
 from detic.predictor import VisualizationDemo
@@ -196,10 +197,22 @@ if __name__ == "__main__":
 
 # Second code block: Enhanced video display loop that adjusts the window size based on the frame's dimensions.
 # It also breaks and exits when the 'esc' key is pressed.
-        for vis in tqdm.tqdm(demo.run_on_video(cam)):
+        # for vis in tqdm.tqdm(demo.run_on_video(cam)):
 
-            cv2.imshow(WINDOW_NAME, vis)
+        #     cv2.imshow(WINDOW_NAME, vis)
             
+        for vis, predictions in tqdm.tqdm(demo.run_on_video(cam)):
+            # Display the visualized frame
+            cv2.imshow(WINDOW_NAME, vis)
+
+            # Extract bounding boxes from predictions
+            if predictions.has("pred_boxes"):
+                bounding_boxes = predictions.pred_boxes.tensor.cpu().numpy()
+                for box in bounding_boxes:
+                    print(box)
+
+    # Rest of the code remains unchanged...
+
             # Get the size of the frame from the cam feed in the original code
             ret, img = cam.read()
             if ret:
