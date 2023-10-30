@@ -34,92 +34,32 @@ from detectron2.config import get_cfg
 
 from detectron2.engine import DefaultTrainer
 
-cfg = get_cfg()
-cfg.MODEL.DEVICE = "cpu"
-cfg.merge_from_file(model_zoo.get_config_file("COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml"))
-cfg.DATASETS.TRAIN = ("fiftyone_train",)
-cfg.DATASETS.TEST = ()
-cfg.DATALOADER.NUM_WORKERS = 2
+# Copyright (c) Facebook, Inc. and its affiliates.
+import argparse
+import glob
+import multiprocessing as mp
+import numpy as np
+import os
+import tempfile
+import time
+import warnings
+import cv2
+import tqdm
+import sys
+import mss
 
-# Point to the saved checkpoint from the previous training session
-cfg.MODEL.WEIGHTS = "models/model_final_2.pth"
+from detectron2.config import get_cfg
+from detectron2.data.detection_utils import read_image
+from detectron2.utils.logger import setup_logger
 
-cfg.SOLVER.IMS_PER_BATCH = 4
-cfg.SOLVER.BASE_LR = 0.01
-cfg.SOLVER.MAX_ITER = 60000
-cfg.SOLVER.STEPS = []
-cfg.SOLVER.GAMMA = 0.1
-cfg.SOLVER.WARMUP_ITERS = 800
-cfg.SOLVER.LR_SCHEDULER_NAME = "WarmupCosineLR"
-cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 512
-cfg.MODEL.ROI_HEADS.NUM_CLASSES = 80
-# cfg.OUTPUT_DIR = "/content/drive/MyDrive/faster_rcnn/Weights_2"
-
-cfg.SOLVER.CHECKPOINT_PERIOD = 20000
-
-import torch
-
-# Load the model checkpoint
-checkpoint = torch.load(os.path.join(cfg.OUTPUT_DIR, "models/model_final_2.pth"), map_location=torch.device('cpu'))
-
-# Extract the number of iterations
-iterations = checkpoint['iteration']
-
-print(f"The model was trained for {iterations} iterations.")
-
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5
+sys.path.insert(0, 'third_party/CenterNet2/')
+from centernet.config import add_centernet_config
+from detic.config import add_detic_config
+from detectron2.data import MetadataCatalog
 
 
-cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "models/model_final_2.pth")  # path to the model we just trained
-predictor = DefaultPredictor(cfg)
-
-
-# import fiftyone as fo
-
-
-# export_dir = "/content/drive/MyDrive/Alpha_dataset_02"
-export_dir = "alpha_dataset_02/Alpha_dataset_02"
-
-# Import the dataset
-imported_dataset = fo.Dataset.from_dir(
-    dataset_dir=export_dir,
-    dataset_type=fo.types.FiftyOneDataset,
-    name="imported_dataset_name",
-    overwrite=True  # Overwrite existing dataset
-)
-
-# Get the list of classes for the "ground_truth" field
-GT_Classes = imported_dataset.distinct("ground_truth.detections.label")
-
-# Print the classes
-print(GT_Classes)
-
-classes = ['adhesive_tape', 'apple', 'artichoke', 'ball', 'balloon', 
-           'banana', 'beer', 'bell_pepper', 'belt', 'book', 'boot', 
-           'bottle', 'bowl', 'box', 'broccoli', 'cake', 'calculator', 
-           'camera', 'candle', 'carrot', 'cheese', 'chopsticks', 'clock', 
-           'clothing', 'coin', 'computer_mouse', 'cookie', 'cucumber', 'dice', 
-           'doughnut', 'drinking_straw', 'flower', 'flying_disc', 
-           'garden_asparagus', 'glove', 'grape', 'handbag', 'hat', 
-           'high_heels', 'juice', 'knife', 'lemon', 'mobile_phone', 'muffin', 
-           'mug', 'mushroom', 'orange', 'oyster', 'pastry', 'peach', 'pear', 
-           'pen', 'pencil_case', 'plastic_bag', 'platter', 'popcorn', 'potato', 
-           'pretzel', 'radish', 'remote_control', 'roller_skates', 'ruler', 
-           'saucer', 'scarf', 'scissors', 'shirt', 'shorts', 'skirt', 'sock', 
-           'spoon', 'stapler', 'strawberry', 'swimwear', 'tablet_computer', 
-           'teddy_bear', 'tie', 'towel', 'watch', 'wine', 'zucchini']
-
-num_classes = len(classes)
-print("Number of classes: ", num_classes)
-
-# Empty Polygon Error correction for fiftyone.
+from detic.predictor import VisualizationDemo
 from detectron2.structures import BoxMode
-
-
-for d in ["train", "val"]:
-    MetadataCatalog.get("fiftyone_" + d).set(thing_classes=classes)
-
-metadata = MetadataCatalog.get("fiftyone_train")
 
 from IPython.display import display, Javascript, Image
 from base64 import b64decode, b64encode
@@ -142,7 +82,109 @@ import requests
 import gzip
 import base64
 
+# Fake a video capture object OpenCV style - half width, half height of first screen using MSS
+class ScreenGrab:
+    def __init__(self):
+        self.sct = mss.mss()
+        m0 = self.sct.monitors[0]
+        self.monitor = {'top': 0, 'left': 0, 'width': m0['width'] / 2, 'height': m0['height'] / 2}
 
+    def read(self):
+        img =  np.array(self.sct.grab(self.monitor))
+        nf = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
+        return (True, nf)
+
+    def isOpened(self):
+        return True
+    def release(self):
+        return True
+
+# constants
+WINDOW_NAME = "Detic"
+
+def setup_cfg(args):
+    cfg = get_cfg()
+    if args.cpu:
+        cfg.MODEL.DEVICE="cpu"
+    add_centernet_config(cfg)
+    add_detic_config(cfg)
+    cfg.merge_from_file(args.config_file)
+    cfg.merge_from_list(args.opts)
+    # Set score_threshold for builtin models
+    cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
+    cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = args.confidence_threshold
+    cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand' # load later
+    if not args.pred_all_class:
+        cfg.MODEL.ROI_HEADS.ONE_CLASS_PER_PROPOSAL = True
+    cfg.freeze()
+    return cfg
+
+
+def get_parser():
+    parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
+    parser.add_argument(
+        "--config-file",
+        default="configs/quick_schedules/mask_rcnn_R_50_FPN_inference_acc_test.yaml",
+        metavar="FILE",
+        help="path to config file",
+    )
+    parser.add_argument("--webcam", help="Take inputs from webcam.")
+    parser.add_argument("--cpu", action='store_true', help="Use CPU only.")
+    parser.add_argument("--video-input", help="Path to video file.")
+    parser.add_argument(
+        "--input",
+        nargs="+",
+        help="A list of space separated input images; "
+        "or a single glob pattern such as 'directory/*.jpg'",
+    )
+    parser.add_argument(
+        "--output",
+        help="A file or directory to save output visualizations. "
+        "If not given, will show output in an OpenCV window.",
+    )
+    parser.add_argument(
+        "--vocabulary",
+        default="lvis",
+        choices=['lvis', 'openimages', 'objects365', 'coco', 'custom'],
+        help="",
+    )
+    parser.add_argument(
+        "--custom_vocabulary",
+        default="",
+        help="",
+    )
+    parser.add_argument("--pred_all_class", action='store_true')
+    parser.add_argument(
+        "--confidence-threshold",
+        type=float,
+        default=0.5,
+        help="Minimum score for instance predictions to be shown",
+    )
+    parser.add_argument(
+        "--opts",
+        help="Modify config options using the command-line 'KEY VALUE' pairs",
+        default=[],
+        nargs=argparse.REMAINDER,
+    )
+    return parser
+
+
+def test_opencv_video_format(codec, file_ext):
+    with tempfile.TemporaryDirectory(prefix="video_format_test") as dir:
+        filename = os.path.join(dir, "test_file" + file_ext)
+        writer = cv2.VideoWriter(
+            filename=filename,
+            fourcc=cv2.VideoWriter_fourcc(*codec),
+            fps=float(30),
+            frameSize=(10, 10),
+            isColor=True,
+        )
+        [writer.write(np.zeros((10, 10, 3), np.uint8)) for _ in range(30)]
+        writer.release()
+        if os.path.isfile(filename):
+            return True
+        return False
 
 def classify_objects(objects_list, frame, color_image):
     for object_info in objects_list:
@@ -184,91 +226,17 @@ def classify_objects(objects_list, frame, color_image):
             publisher3.publish(marker)
 
 
-        scores = {
-            category: score_dict[category].get(class_name, 0) * 100
-            for category in score_dict
-        }
-
-        if all(score == 0 for score in scores.values()):
-            scores["Misc"] = 100
-
         print(f"Class Name: {class_name}")
         print(f"Object ID: {object_id}")
         print(f"Box: {box}")
-        for category, score in scores.items():
-            if score != 0:
-                print(f"{category}: {score}%")
         print("\n")
 
     print("---------------------------------------------------")
 
-# def classify_objects(objects_list, frame, color_image):
-#     for object_info in objects_list:
-#         class_name = object_info["class_name"]
-#         object_id = object_info["object_id"]
-#         segmentation = object_info["segmentation"]
-#         box = object_info["box"]
-
-#         corners = []
-
-#         centerx = (box[0] + box[2])/2
-#         centery = (box[1] + box[3])/ 2
-#         corners.append(centerx)
-#         corners.append(centery)
-
-#         depth_meters = frame.get_distance(int(corners[0]), int(corners[1]))
-#         point = rs.rs2_deproject_pixel_to_point(depth_intrinsics, [int(corners[0]), int(corners[1])], depth_meters)
-#         if (point[0] == 0 and point[1] == 0 and point[2] == 0):
-#             print("points are zero")
-#         else:
-#             point_stamped.point.x = point[0]
-#             point_stamped.point.y = point[1]
-#             point_stamped.point.z = point[2]
-
-#         marker = Marker()
-#         marker.header.frame_id = "image"
-#         marker.type = Marker.TEXT_VIEW_FACING
-#         marker.action = Marker.ADD
-#         marker.pose.position.x = point_stamped.point.x 
-#         marker.pose.position.y = point_stamped.point.y 
-#         marker.pose.position.z = point_stamped.point.z 
-#         marker.text = class_name
 
 
-#         image_new = Image()
-#         image_new = bridge.cv2_to_imgmsg(color_image, "bgr8")
-#         image_new.header.frame_id = "image"
-#         publisher.publish(image_new)
-#         publisher2.publish(camera_info)
-#         publisher3.publish(marker)
-
-#         scores = {
-#             category: score_dict[category].get(class_name, 0) * 100
-#             for category in score_dict
-#         }
-
-#         if all(score == 0 for score in scores.values()):
-#             scores["Misc"] = 100
-
-#         print(f"Class Name: {class_name}")
-#         print(f"Object ID: {object_id}")
-#         print(f"Box: {box}")
-#         print(f"center corners", corners)
-#         print("this is the depth", depth_meters)
-#         print(f"Segmentation: {segmentation}")
-#         for category, score in scores.items():
-#             if score != 0:
-#                 print(f"{category}: {score}%")
-#         print("\n")
-#     print("---------------------------------------------------")
-
-
-
-
-def generate_objects_list(outputs, cfg):
-    instances = outputs["instances"]
-
-    metadata = MetadataCatalog.get(cfg.DATASETS.TRAIN[0])
+def generate_objects_list(outputs, metadata):
+    instances = outputs
     class_catalog = metadata.thing_classes
     return [{
         "class_name": class_catalog[instances.pred_classes[idx]],
@@ -276,34 +244,6 @@ def generate_objects_list(outputs, cfg):
         "box": coordinates.tolist()
     } for idx, coordinates in enumerate(instances.pred_boxes.tensor)]
 
-
-score_dict = {
-    "Fruit": {
-        'Apple': 0.98, 'Orange': 0.46, 'Peach': 0.62, 'Strawberry': 0.92,
-        'Grape': 0.96, 'Pear': 0.91, 'Banana': 0.95, 'Carrot': 0.88,
-        'Pepper': 0.82, 'Cucumber': 0.91, 'Zucchini': 0.97,
-        'Radish': 0.76, 'Artichoke': 0.7, 'Cheese': 0.75
-    },
-    "Drink": {
-        'Bottle': 0.66, 'Beer': 0.82, 'Juice': 0.73, 'Wine': 0.84,
-        'Mug': 0.96, 'Spoon': 0.46, 'Saucer': 0.46, 'Hat': 0.46,
-    },
-    "Vegetable": {
-        'Strawberry': 0.7, 'Banana': 0.76, 'Carrot': 0.97, 'Pepper': 0.7,
-        'Cucumber': 0.88, 'Broccoli': 0.82, 'Garden Asparagus': 0.91,
-        'Zucchini': 0.89, 'Artichoke': 0.75, 'Mushroom': 0.76,
-        'Potato': 0.91, 'Cheese': 0.7
-    },
-    "Snacks": {'Apple': 0.69, 'Banana': 0.78, 'Popcorn': 0.89, 'Muffin': 0.84},
-    "Stationery": {
-        'Pen': 0.87, 'Adhesive tape': 0.67, 'Stapler': 0.67,
-        'Ruler': 0.81, 'Calculator': 0.58, 'Box': 0.96, 'Clock': 0.67
-    },
-    "Toys": {'Ball': 0.75, 'Flying disc': 0.46, 'Teddy bear': 0.87},
-    "Tableware": {
-        'Orange': 0.83, 'Plate': 0.64, 'Knife': 0.46, 'Spoon': 0.46, 'Saucer': 0.46, 'Chopsticks': 0.58
-    }
-}
 
 import cv2
 import pyrealsense2 as rs
