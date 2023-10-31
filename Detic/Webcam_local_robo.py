@@ -257,6 +257,14 @@ import tf
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 
+mp.set_start_method("spawn", force=True)
+args = get_parser().parse_args()
+setup_logger(name="fvcore")
+logger = setup_logger()
+logger.info("Arguments: " + str(args))
+
+cfg = setup_cfg(args)
+demo = VisualizationDemo(cfg, args)
 
 bridge = CvBridge()
 
@@ -264,6 +272,8 @@ rospy.init_node('object_locations')
 publisher = rospy.Publisher("/image_raw", Image,queue_size=10)
 publisher2 = rospy.Publisher("/image_info", CameraInfo,queue_size=10)
 publisher3 = rospy.Publisher('/object', Marker, queue_size=10)
+
+
 
 # Initialize the webcam
 #cap = cv2.VideoCapture(0)
@@ -323,57 +333,101 @@ try:
         frame= np.asanyarray(color_frame.get_data())  #This is the image frame
 
         #cv2.imshow("webcam", frame)
+    # Make predictions on the frame
+        predictions, vis_output = demo.run_on_image(frame)
+
+        # Apply class-agnostic NMS to the predictions
+        if predictions.has("pred_boxes"):
+            boxes = predictions["instances"].pred_boxes.tensor
+            scores = predictions["instances"].scores
+
+            keep = nms(boxes, scores.max(dim=1)[0] if len(scores.shape) == 2 else scores, iou_threshold=0.01)
+            predictions["instances"] = predictions["instances"][keep]
+
+            if len(scores.shape) == 2:
+                max_scores, max_classes = scores[keep].max(dim=1)
+            else:
+                max_scores = scores[keep]
+                max_classes = predictions["instances"].pred_classes
+
+            predictions["instances"].scores = max_scores
+            predictions["instances"].pred_classes = max_classes
 
 
+        # Display the visualized frame
+        vis = vis_output.get_image()[:, :, ::-1]
+        cv2.imshow(WINDOW_NAME, vis)
 
-        # Make the predictions
-        outputs = predictor(frame)
+        # Extract bounding boxes and other information from predictions
+        if predictions.has("pred_boxes"):
+            metadata = demo.metadata  # Use the metadata from the VisualizationDemo class
+            detected_objects = generate_objects_list(predictions, metadata)
+            classify_objects(detected_objects, aligned_depth_frame, frame)
 
-        from detectron2.layers import nms
+        # Resize the window based on the frame's dimensions
+        height, width, _ = frame.shape
+        cv2.resizeWindow(WINDOW_NAME, width, height)
 
-        # Extract bounding boxes and scores
-        boxes = outputs["instances"].pred_boxes.tensor
-        scores = outputs["instances"].scores
-
-        # Apply class-agnostic NMS
-        from detectron2.layers import nms
-        keep = nms(boxes, scores.max(dim=1)[0] if len(scores.shape) == 2 else scores, iou_threshold=0.01)
-
-        # Retain only the bounding boxes and class predictions that pass NMS
-        outputs["instances"] = outputs["instances"][keep]
-
-        # If scores tensor is two-dimensional, find max score and its class for each box
-        if len(scores.shape) == 2:
-            max_scores, max_classes = scores[keep].max(dim=1)
-        else:
-            max_scores = scores[keep]
-            max_classes = outputs["instances"].pred_classes
-
-        # Update the outputs with the highest confidence class predictions
-        outputs["instances"].scores = max_scores
-        outputs["instances"].pred_classes = max_classes
-
-
-
-        objects_list = generate_objects_list(outputs, cfg)
-        classify_objects(objects_list, aligned_depth_frame, frame)
-
-        v = Visualizer(frame[:, :, ::-1],
-                    metadata=metadata,
-                    scale=1.0)
-        out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
-
-        # Display the resulting frame
-        cv2.imshow('Webcam', out.get_image()[:, :, ::-1])
-
-        # Break the loop on 'q' key press
-        key = cv2.waitKey(1) & 0xFF
-        if key == ord('q'):
-
-            break
-
-    # When everything is done, release the capture
-    cv2.destroyAllWindows()
+        if cv2.waitKey(1) == 27:
+            break  # esc to quit
 except Exception as e:
         print(e)
+#############################################################################################################
+
+
+    # When everything is done, release the capture and destroy windows
+#     pipeline.stop()
+#     cv2.destroyAllWindows()
+
+
+#         # Make the predictions
+#         outputs = predictor(frame)
+
+#         from detectron2.layers import nms
+
+#         # Extract bounding boxes and scores
+#         boxes = outputs["instances"].pred_boxes.tensor
+#         scores = outputs["instances"].scores
+
+#         # Apply class-agnostic NMS
+#         from detectron2.layers import nms
+#         keep = nms(boxes, scores.max(dim=1)[0] if len(scores.shape) == 2 else scores, iou_threshold=0.01)
+
+#         # Retain only the bounding boxes and class predictions that pass NMS
+#         outputs["instances"] = outputs["instances"][keep]
+
+#         # If scores tensor is two-dimensional, find max score and its class for each box
+#         if len(scores.shape) == 2:
+#             max_scores, max_classes = scores[keep].max(dim=1)
+#         else:
+#             max_scores = scores[keep]
+#             max_classes = outputs["instances"].pred_classes
+
+#         # Update the outputs with the highest confidence class predictions
+#         outputs["instances"].scores = max_scores
+#         outputs["instances"].pred_classes = max_classes
+
+
+
+#         objects_list = generate_objects_list(outputs, cfg)
+#         classify_objects(objects_list, aligned_depth_frame, frame)
+
+#         v = Visualizer(frame[:, :, ::-1],
+#                     metadata=metadata,
+#                     scale=1.0)
+#         out = v.draw_instance_predictions(outputs["instances"].to("cpu"))
+
+#         # Display the resulting frame
+#         cv2.imshow('Webcam', out.get_image()[:, :, ::-1])
+
+#         # Break the loop on 'q' key press
+#         key = cv2.waitKey(1) & 0xFF
+#         if key == ord('q'):
+
+#             break
+
+#     # When everything is done, release the capture
+#     cv2.destroyAllWindows()
+# except Exception as e:
+#         print(e)
 

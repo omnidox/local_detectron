@@ -4,7 +4,7 @@ webcam Detic GPU--> python demo2.py --config-file configs/Detic_LCOCOI21k_CLIP_S
 
 webcam Detic cpu --> python demo2.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary lvis --cpu --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
-webcam Detic cpu custom Vocab --> python demo2.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary headphone,webcam,paper,coffee --cpu --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+webcam Detic cpu custom Vocab --> python demo3.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary headphone,webcam,paper,coffee --cpu --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
-webcam Detic gpu custom Vocab --> python demo2.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary glasses,headphone --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+webcam Detic gpu custom Vocab --> python demo3.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary glasses,headphone --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
