@@ -4,3 +4,6 @@ alpha_dataset_02
 models
 *.jpg
 models/model_final.pth
+output/lvis_v1_train.json.zip
+output/lvis_v1_val.json
+output/lvis_v1_val.json.zip
