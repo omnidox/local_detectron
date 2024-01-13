@@ -8,3 +8,11 @@ webcam Detic cpu custom Vocab --> python demo3.py --config-file configs/Detic_LC
 
 webcam Detic gpu custom Vocab --> python demo3.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary glasses,headphone --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
 
+
+
+
+
+
+
+webcam Detic tester gpu custom Vocab --> python Webcam_local_detic.py --config-file configs/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.yaml --webcam 0 --vocabulary custom --custom_vocabulary glasses,headphone --confidence-threshold 0.3 --opts MODEL.WEIGHTS models/Detic_LCOCOI21k_CLIP_SwinB_896b32_4x_ft4x_max-size.pth
+

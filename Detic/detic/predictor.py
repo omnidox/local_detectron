@@ -98,6 +98,40 @@ class VisualizationDemo(object):
 
         return predictions, vis_output
 
+    def run_on_image2(self, image):
+        """
+        Args:
+            image (np.ndarray): an image of shape (H, W, C) (in BGR order).
+                This is the format used by OpenCV.
+
+        Returns:
+            predictions (dict): the output of the model.
+            vis_output (VisImage): the visualized image output.
+        """
+        vis_output = None
+        predictions = self.predictor(image)
+        # Convert image from OpenCV BGR format to Matplotlib RGB format.
+        image = image[:, :, ::-1]
+        visualizer = Visualizer(image, self.metadata, instance_mode=self.instance_mode)
+        
+        if "panoptic_seg" in predictions:
+            panoptic_seg, segments_info = predictions["panoptic_seg"]
+            vis_output = visualizer.draw_panoptic_seg_predictions(
+                panoptic_seg.to(self.cpu_device), segments_info
+            )
+        else:
+            if "sem_seg" in predictions:
+                vis_output = visualizer.draw_sem_seg(
+                    predictions["sem_seg"].argmax(dim=0).to(self.cpu_device)
+                )
+            if "instances" in predictions:
+                # Overwrite the predictions variable with the value of the "instances" key
+                predictions = predictions["instances"].to(self.cpu_device)
+                vis_output = visualizer.draw_instance_predictions(predictions=predictions)
+
+        return predictions, vis_output
+
+
     def _frame_from_video(self, video):
         while video.isOpened():
             success, frame = video.read()

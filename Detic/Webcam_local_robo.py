@@ -81,23 +81,7 @@ import json
 import requests
 import gzip
 import base64
-
-# Fake a video capture object OpenCV style - half width, half height of first screen using MSS
-class ScreenGrab:
-    def __init__(self):
-        self.sct = mss.mss()
-        m0 = self.sct.monitors[0]
-        self.monitor = {'top': 0, 'left': 0, 'width': m0['width'] / 2, 'height': m0['height'] / 2}
-
-    def read(self):
-        img =  np.array(self.sct.grab(self.monitor))
-        nf = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-        return (True, nf)
-
-    def isOpened(self):
-        return True
-    def release(self):
-        return True
+from detectron2.layers import nms
 
 # constants
 WINDOW_NAME = "Detic"
@@ -333,25 +317,28 @@ try:
         frame= np.asanyarray(color_frame.get_data())  #This is the image frame
 
         #cv2.imshow("webcam", frame)
+
+
+        
     # Make predictions on the frame
         predictions, vis_output = demo.run_on_image(frame)
 
         # Apply class-agnostic NMS to the predictions
         if predictions.has("pred_boxes"):
-            boxes = predictions["instances"].pred_boxes.tensor
-            scores = predictions["instances"].scores
+            boxes = predictions.pred_boxes.tensor
+            scores = predictions.scores
 
             keep = nms(boxes, scores.max(dim=1)[0] if len(scores.shape) == 2 else scores, iou_threshold=0.01)
-            predictions["instances"] = predictions["instances"][keep]
+            predictions = predictions[keep]
 
             if len(scores.shape) == 2:
                 max_scores, max_classes = scores[keep].max(dim=1)
             else:
                 max_scores = scores[keep]
-                max_classes = predictions["instances"].pred_classes
+                max_classes = predictions.pred_classes
 
-            predictions["instances"].scores = max_scores
-            predictions["instances"].pred_classes = max_classes
+            predictions.scores = max_scores
+            predictions.pred_classes = max_classes
 
 
         # Display the visualized frame
@@ -372,6 +359,8 @@ try:
             break  # esc to quit
 except Exception as e:
         print(e)
+finally:
+    cv2.destroyAllWindows()
 #############################################################################################################
 
 

@@ -24,23 +24,6 @@ from detectron2.data import MetadataCatalog
 
 from detic.predictor import VisualizationDemo
 
-# Fake a video capture object OpenCV style - half width, half height of first screen using MSS
-class ScreenGrab:
-    def __init__(self):
-        self.sct = mss.mss()
-        m0 = self.sct.monitors[0]
-        self.monitor = {'top': 0, 'left': 0, 'width': m0['width'] / 2, 'height': m0['height'] / 2}
-
-    def read(self):
-        img =  np.array(self.sct.grab(self.monitor))
-        nf = cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
-        return (True, nf)
-
-    def isOpened(self):
-        return True
-    def release(self):
-        return True
-
 # constants
 WINDOW_NAME = "Detic"
 
