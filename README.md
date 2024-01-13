@@ -28,9 +28,8 @@ To get started with this project, clone the repository and install the required 
 This project is open for contributions. Future work includes optimizing the detection models for different environments and integrating more advanced AI features for enhanced performance.
 
 ## About the Author
-This project is developed by [Your Name], a passionate AI and robotics enthusiast with a keen interest in applying AI in practical and innovative ways. With a strong background in Python programming and computer vision, [Your Name] is adept at leveraging cutting-edge technologies to create impactful solutions in the field of AI and robotics.
+This project is developed by Rafael Hidalgo, a passionate AI and robotics enthusiast with a keen interest in applying AI in practical and innovative ways. With a strong background in Python programming and computer vision, Rafael Hidalgo is adept at leveraging cutting-edge technologies to create impactful solutions in the field of AI and robotics.
 
 ## Contact and Collaboration
-Feel free to reach out for collaboration opportunities or any queries related to this project. Contact details can be found on my [GitHub profile](https://github.com/omnidox/local_detectron).
+Feel free to reach out for any queries related to this project. Contact details can be found on my [GitHub profile](https://github.com/omnidox).
 
-![Local Detectron Implementation](https://github.com/omnidox/local_detectron/blob/main/image.jpg?raw=true)
